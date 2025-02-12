@@ -5,25 +5,38 @@ import axios from 'axios';
   /*import SelectGroupOne from '../../components/Forms/SelectGroup/SelectGroupOne';*/
 }
 
-const FormLayout = () => {
+interface Category {
+  id: number;
+  name: string;
+}
+
+const FormLayout :React.FC = () => {
   const [partyType, setPartyType] = useState('');
   const [error, setError] = useState('');
   const [showError, setShowError] = useState('');
-  const [partyCategory, setPartyCategory] = useState('');
-  const [categories, setCategories] = useState(['Retail', 'Wholesale']);
+  const [partyCategory, setPartyCategory] = useState<string | number>('');
+  const [categories, setCategories] =  useState<Category[]>([]);
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [newCategory, setNewCategory] = useState('');
   const [partyName, setPartyName] = useState('');
   const [billingAddress, setBillingAddress] = useState('');
   const [shippingAddress, setShippingAddress] = useState('');
   const [sameAsBilling, setSameAsBilling] = useState(false);
-  const [balanceType, setBalanceType] = useState('to-collect'); // Default selection
+  const [balanceType, setBalanceType] = useState('To Collect'); // Default selection
   const [gstin, setGstin] = useState('');
   const [loading, setLoading] = useState(false);
   const [apiFetched, setApiFetched] = useState(false);
+  const [mobileNumber, setMobileNumber] = useState('');
+  const [creditPeriod, setCreditPeriod] = useState('');
+  const [creditLimit, setCreditLimit] = useState('');
+  const [email, setEmail] = useState('');
+  const [openingBalance, setOpeningBalance] = useState('');
+  const [shouldSubmit, setShouldSubmit] = useState(false);
+  const [panNumber, setPanNumber] = useState('');
+  
 
   // Handle category selection
-  const handleCategoryChange = (e) => {
+  {/*const handleCategoryChange = (e) => {
     const value = e.target.value;
     if (value === 'create') {
       setIsCreatingCategory(true); // Show popup
@@ -31,10 +44,10 @@ const FormLayout = () => {
     } else {
       setPartyCategory(value);
     }
-  };
+  };*/}
 
   // Handle creating a new category
-  const handleCreateCategory = (e) => {
+  {/*const handleCreateCategory = (e) => {
     e.preventDefault();
     if (newCategory.trim() && !categories.includes(newCategory.trim())) {
       setCategories([...categories, newCategory.trim()]);
@@ -44,18 +57,8 @@ const FormLayout = () => {
     } else {
       alert('Please enter a valid category.');
     }
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!partyType) {
-      setShowError('Party Type is required');
-      return;
-    }
-    setError('');
-    // Proceed with form submission
-  };
-
+  };*/}
+  
   const handleSameAsBilling = () => {
     setSameAsBilling(!sameAsBilling);
     if (!sameAsBilling) {
@@ -64,21 +67,24 @@ const FormLayout = () => {
       setShippingAddress('');
     }
   };
-     
+
   useEffect(() => {
-    if (gstin.length === 15 && /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[0-9]{1}[Z]{1}[0-9A-Z]{1}$/.test(gstin)) {
+    if (
+      gstin.length === 15 &&
+      /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[0-9]{1}[Z]{1}[0-9A-Z]{1}$/.test(gstin)
+    ) {
       fetchGSTDetails();
     } else {
-      setPartyName("");
-      setBillingAddress("");
-      setShippingAddress("");
-      setError("");
+      setPartyName('');
+      setBillingAddress('');
+      setShippingAddress('');
+      setError('');
     }
   }, [gstin]);
 
   const fetchGSTDetails = async () => {
     if (!gstin) {
-      alert("Please enter a valid GSTIN number.");
+      alert('Please enter a valid GSTIN number.');
       return;
     }
 
@@ -88,7 +94,7 @@ const FormLayout = () => {
     try {
       console.log(`Requesting GST details for GSTIN: ${gstin}`);
       const response = await axios.get(
-        `http://192.168.1.40:8000/fetch-gst/${gstin}/`,
+        `http://192.168.1.40:8000/sales/fetch-gst/${gstin}/`,
       ); // Replace with your actual API
 
       if (response.data) {
@@ -108,6 +114,179 @@ const FormLayout = () => {
       setLoading(false);
     }
   };
+
+  // **UseEffect to submit data when shouldSubmit is true**
+  useEffect(() => {
+    if (!shouldSubmit) return; // Only run when shouldSubmit is true
+
+    const submitData = async () => {
+      setLoading(true);
+      setError('');
+
+      const formData = {
+        party_name: partyName,
+        party_type: partyType,
+        category: partyCategory,
+        mobile_number: mobileNumber,
+        email: email,
+        gstin: gstin,
+        pan: panNumber,
+        billing_address: billingAddress,
+        shipping_address: sameAsBilling ? billingAddress : shippingAddress,
+        opening_balance: parseFloat(openingBalance) || 0,
+        balance_type: balanceType,
+        credit_period: parseInt(creditPeriod) || 0,
+        credit_limit: parseFloat(creditLimit) || 0,
+      };
+
+      try {
+        console.log(formData);
+        await axios.post('http://192.168.1.40:8000/sales/parties/', formData, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        alert('Party details saved successfully!');
+        resetForm();
+      } catch (err) {
+        console.error('Error saving party details:', err);
+        setError('Failed to save data. Please try again.');
+      } finally {
+        setLoading(false);
+        setShouldSubmit(false); // Reset after submission
+      }
+    };
+
+    submitData();
+  }, [shouldSubmit]);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (
+      !partyType ||
+      !partyName ||
+      !mobileNumber ||
+      !email ||
+      !billingAddress
+    ) {
+      alert('Please fill all required fields');
+      return;
+    }
+    setShouldSubmit(true); // Trigger useEffect to submit data
+  };
+
+  // Reset form fields
+  const resetForm = () => {
+    setPartyType('');
+    setPartyName('');
+    setBillingAddress('');
+    setShippingAddress('');
+    setMobileNumber('');
+    setCategories([]);
+    setBalanceType('to-collect');
+    setGstin('');
+    setPanNumber('');
+    setEmail('');
+    setOpeningBalance('');
+    setCreditPeriod('');
+    setCreditLimit('');
+    setSameAsBilling(false);
+  };
+
+  // Fetch categories from API when component mounts
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('http://192.168.1.40:8000/sales/categories/'); // Replace with actual API
+      const data: Category[] = await response.json();
+      console.log(data);
+      if (data && Array.isArray(data.results)) {
+        setCategories(data.results); // Update categories with the results array
+      } else {
+        throw new Error('Invalid data format');
+      } // Assuming API returns an array of categories
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      setCategories([]);
+    }
+  };
+
+  // Handle category selection
+  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    e.preventDefault();
+    const value = e.target.value;
+    if (value === 'create') {
+      setIsCreatingCategory(true);
+      setPartyCategory('');
+    } else {
+      setPartyCategory(Number(value));
+    }
+  };
+
+  const handleCreateCategory = async (e: React.FormEvent) => {
+    e.preventDefault(); // ✅ Prevent page refresh immediately
+  
+    if (!newCategory.trim()) {
+      alert('Please enter a valid category.');
+      return;
+    }
+  
+    try {
+      const response = await fetch('http://192.168.1.40:8000/sales/categories/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newCategory.trim() }),
+      });
+  
+      const data = await response.json();
+      console.log('Response from API:', data); // Debugging
+  
+      if (response.ok) {
+        setNewCategory('');
+        setIsCreatingCategory(false);
+        await fetchCategories(); // ✅ Re-fetch categories from API to update dropdown
+      } else {
+        console.error('Error adding category:', data);
+        alert('Error adding category');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Failed to add category.');
+    }
+  };
+
+  // Handle new category creation with API call
+  {/*const handleCreateCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newCategory.trim()) {
+      try {
+        const response = await fetch('http://192.168.1.40:8000/sales/categories/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: newCategory.trim() }),
+        });
+
+        if (response.ok) {
+          const data: Category = await response.json();
+          setCategories([...categories, data]); // Update category list
+          setPartyCategory(data.id);
+          setNewCategory('');
+          setIsCreatingCategory(false);
+        } else {
+          alert('Error adding category');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to add category.');
+      }
+    } else {
+      alert('Please enter a valid category.');
+    }
+  };*/}
+  
 
   return (
     <>
@@ -141,7 +320,7 @@ const FormLayout = () => {
 
                 <div className="w-full xl:w-1/2">
                   <label className="mb-2.5 block text-black dark:text-white">
-                    Mobile Number
+                    Mobile Number <span className="text-meta-1">*</span>
                   </label>
                   <input
                     type="tel"
@@ -149,6 +328,8 @@ const FormLayout = () => {
                     className="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                     pattern="[6-9]{1}[0-9]{9}"
                     title="Please enter a valid 10-digit mobile number starting with 6-9"
+                    value={mobileNumber}
+                    onChange={(e) => setMobileNumber(e.target.value)}
                     required
                   />
                 </div>
@@ -162,6 +343,9 @@ const FormLayout = () => {
                   type="email"
                   placeholder="Enter your email address"
                   className="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
                 />
               </div>
 
@@ -179,6 +363,8 @@ const FormLayout = () => {
                       type="number"
                       placeholder="0"
                       className="w-full pl-8 rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                      value={openingBalance}
+                      onChange={(e) => setOpeningBalance(e.target.value)}
                     />
                   </div>
 
@@ -188,8 +374,8 @@ const FormLayout = () => {
                     value={balanceType}
                     onChange={(e) => setBalanceType(e.target.value)}
                   >
-                    <option value="to-collect">To Collect</option>
-                    <option value="to-pay">To Pay</option>
+                    <option value="To Collect">To Collect</option>
+                    <option value="To Pay">To Pay</option>
                   </select>
                 </div>
               </div>
@@ -229,6 +415,8 @@ const FormLayout = () => {
                   placeholder="Enter PAN Number"
                   className="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                   pattern="[A-Z]{5}[0-9]{4}[A-Z]{1}"
+                  value={panNumber}
+                  onChange={(e) => setPanNumber(e.target.value)}
                   required
                 />
               </div>
@@ -244,15 +432,15 @@ const FormLayout = () => {
                   required
                 >
                   <option value="">Select Party Type</option>
-                  <option value="customer">Customer</option>
-                  <option value="supplier">Supplier</option>
+                  <option value="Customer">Customer</option>
+                  <option value="Supplier">Supplier</option>
                 </select>
                 {showError && (
                   <p className="text-red-500 text-sm mt-1">{showError}</p>
                 )}
               </div>
 
-              {/* Party Category */}
+              {/* Party Category*/}
               <div className="mb-4.5">
                 <label className="mb-2.5 block text-black dark:text-white">
                   Party Category
@@ -263,54 +451,16 @@ const FormLayout = () => {
                   onChange={handleCategoryChange}
                 >
                   <option value="">All Categories</option>
-                  {categories.map((category, index) => (
-                    <option key={index} value={category}>
-                      {category}
+                  {Array.isArray(categories) && categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
                     </option>
                   ))}
                   <option value="create">Create Category</option>
                 </select>
               </div>
 
-              {/* Popup Modal for Creating Category */}
-              {isCreatingCategory && (
-                <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50">
-                  <div className="bg-white p-6 rounded-lg shadow-lg w-96">
-                    <h3 className="text-xl font-bold mb-2">
-                      Create a New Category
-                    </h3>
-                    <form
-                      onSubmit={handleCreateCategory}
-                      className="flex flex-col space-y-3"
-                    >
-                      <input
-                        type="text"
-                        className="p-2 border border-gray-300 rounded-lg w-full"
-                        placeholder="Enter new category"
-                        value={newCategory}
-                        onChange={(e) => setNewCategory(e.target.value)}
-                        required
-                      />
-                      <div className="flex justify-end space-x-2">
-                        <button
-                          type="submit"
-                          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                        >
-                          Add
-                        </button>
-                        <button
-                          type="button"
-                          className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
-                          onClick={() => setIsCreatingCategory(false)}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              )}
-
+              
               {/* New Section Heading */}
               <div className="border-b border-stroke py-4 px-6.5 dark:border-strokedark mb-6 mt-6">
                 <h3 className="font-medium text-black dark:text-white">
@@ -376,6 +526,8 @@ const FormLayout = () => {
                     type="number"
                     placeholder="Enter Credit Period"
                     className="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                    value={creditPeriod}
+                    onChange={(e) => setCreditPeriod(e.target.value)}
                   />
                 </div>
                 <div className="mb-4.5">
@@ -390,29 +542,63 @@ const FormLayout = () => {
                       type="number"
                       placeholder="0"
                       className="w-full pl-8 rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                      value={creditLimit}
+                      onChange={(e) => setCreditLimit(e.target.value)}
                     />
                   </div>
                 </div>
               </div>
 
-              {/*<SelectGroupOne />*/}
-
-              {/*<div className="mb-6">
-                <label className="mb-2.5 block text-black dark:text-white">
-                  Message
-                </label>
-                <textarea
-                  rows={6}
-                  placeholder="Type your message"
-                  className="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                ></textarea>
-              </div>*/}
-
-              <button className="flex w-full justify-center rounded bg-primary p-3 font-medium text-gray hover:bg-opacity-90">
-                Save
+    
+              <button
+                type="submit"
+                className="flex w-full justify-center rounded bg-primary p-3 font-medium text-gray hover:bg-opacity-90"
+                disabled={loading}
+              >
+                {loading ? 'Saving...' : 'Save'}
               </button>
+              {error && <p className="text-red-500 mt-2">{error}</p>}
             </div>
           </form>
+          {/* Popup Modal for Creating Category*/}
+          {isCreatingCategory && (
+                <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50">
+                  <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+                    <h3 className="text-xl font-bold mb-2">
+                      Create a New Category
+                    </h3>
+                    <form
+                      onSubmit={handleCreateCategory}
+                      className="flex flex-col space-y-3"
+                    >
+                      <input
+                        type="text"
+                        className="p-2 border border-gray-300 rounded-lg w-full"
+                        placeholder="Enter new category"
+                        value={newCategory}
+                        onChange={(e) => setNewCategory(e.target.value)}
+                        required
+                      />
+                      <div className="flex justify-end space-x-2">
+                        <button
+                          type="submit"
+                          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                        >
+                          Add
+                        </button>
+                        <button
+                          type="button"
+                          className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+                          onClick={() => setIsCreatingCategory(false)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
         </div>
       </div>
     </>
