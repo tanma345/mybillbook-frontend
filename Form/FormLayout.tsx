@@ -10,12 +10,12 @@ interface Category {
   name: string;
 }
 
-const FormLayout :React.FC = () => {
+const FormLayout: React.FC = () => {
   const [partyType, setPartyType] = useState('');
   const [error, setError] = useState('');
   const [showError, setShowError] = useState('');
   const [partyCategory, setPartyCategory] = useState<string | number>('');
-  const [categories, setCategories] =  useState<Category[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [newCategory, setNewCategory] = useState('');
   const [partyName, setPartyName] = useState('');
@@ -33,10 +33,10 @@ const FormLayout :React.FC = () => {
   const [openingBalance, setOpeningBalance] = useState('');
   const [shouldSubmit, setShouldSubmit] = useState(false);
   const [panNumber, setPanNumber] = useState('');
-  
 
   // Handle category selection
-  {/*const handleCategoryChange = (e) => {
+  {
+    /*const handleCategoryChange = (e) => {
     const value = e.target.value;
     if (value === 'create') {
       setIsCreatingCategory(true); // Show popup
@@ -44,10 +44,12 @@ const FormLayout :React.FC = () => {
     } else {
       setPartyCategory(value);
     }
-  };*/}
+  };*/
+  }
 
   // Handle creating a new category
-  {/*const handleCreateCategory = (e) => {
+  {
+    /*const handleCreateCategory = (e) => {
     e.preventDefault();
     if (newCategory.trim() && !categories.includes(newCategory.trim())) {
       setCategories([...categories, newCategory.trim()]);
@@ -57,8 +59,9 @@ const FormLayout :React.FC = () => {
     } else {
       alert('Please enter a valid category.');
     }
-  };*/}
-  
+  };*/
+  }
+
   const handleSameAsBilling = () => {
     setSameAsBilling(!sameAsBilling);
     if (!sameAsBilling) {
@@ -93,8 +96,16 @@ const FormLayout :React.FC = () => {
 
     try {
       console.log(`Requesting GST details for GSTIN: ${gstin}`);
+      const token = localStorage.getItem('accessToken');
+      if (!token) throw new Error('Token not found');
       const response = await axios.get(
         `http://192.168.1.40:8000/sales/fetch-gst/${gstin}/`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        },
       ); // Replace with your actual API
 
       if (response.data) {
@@ -141,8 +152,11 @@ const FormLayout :React.FC = () => {
 
       try {
         console.log(formData);
+        const token = localStorage.getItem('accessToken');
+        if (!token) throw new Error('Token not found');
         await axios.post('http://192.168.1.40:8000/sales/parties/', formData, {
           headers: {
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         });
@@ -200,7 +214,19 @@ const FormLayout :React.FC = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch('http://192.168.1.40:8000/sales/categories/'); // Replace with actual API
+      const token = localStorage.getItem('accessToken');
+      if (!token) throw new Error('Token not found');
+
+      const response = await fetch(
+        'http://192.168.1.40:8000/sales/categories/',
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        },
+      ); // Replace with actual API
       const data: Category[] = await response.json();
       console.log(data);
       if (data && Array.isArray(data.results)) {
@@ -228,22 +254,31 @@ const FormLayout :React.FC = () => {
 
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault(); // ✅ Prevent page refresh immediately
-  
+
     if (!newCategory.trim()) {
       alert('Please enter a valid category.');
       return;
     }
-  
+
     try {
-      const response = await fetch('http://192.168.1.40:8000/sales/categories/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newCategory.trim() }),
-      });
-  
+      const token = localStorage.getItem('accessToken');
+      if (!token) throw new Error('Token not found');
+
+      const response = await fetch(
+        'http://192.168.1.40:8000/sales/categories/',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ name: newCategory.trim() }),
+        },
+      );
+
       const data = await response.json();
       console.log('Response from API:', data); // Debugging
-  
+
       if (response.ok) {
         setNewCategory('');
         setIsCreatingCategory(false);
@@ -259,7 +294,8 @@ const FormLayout :React.FC = () => {
   };
 
   // Handle new category creation with API call
-  {/*const handleCreateCategory = async (e: React.FormEvent) => {
+  {
+    /*const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newCategory.trim()) {
       try {
@@ -285,8 +321,8 @@ const FormLayout :React.FC = () => {
     } else {
       alert('Please enter a valid category.');
     }
-  };*/}
-  
+  };*/
+  }
 
   return (
     <>
@@ -451,16 +487,16 @@ const FormLayout :React.FC = () => {
                   onChange={handleCategoryChange}
                 >
                   <option value="">All Categories</option>
-                  {Array.isArray(categories) && categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
+                  {Array.isArray(categories) &&
+                    categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
                   <option value="create">Create Category</option>
                 </select>
               </div>
 
-              
               {/* New Section Heading */}
               <div className="border-b border-stroke py-4 px-6.5 dark:border-strokedark mb-6 mt-6">
                 <h3 className="font-medium text-black dark:text-white">
@@ -549,7 +585,6 @@ const FormLayout :React.FC = () => {
                 </div>
               </div>
 
-    
               <button
                 type="submit"
                 className="flex w-full justify-center rounded bg-primary p-3 font-medium text-gray hover:bg-opacity-90"
@@ -562,43 +597,42 @@ const FormLayout :React.FC = () => {
           </form>
           {/* Popup Modal for Creating Category*/}
           {isCreatingCategory && (
-                <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50">
-                  <div className="bg-white p-6 rounded-lg shadow-lg w-96">
-                    <h3 className="text-xl font-bold mb-2">
-                      Create a New Category
-                    </h3>
-                    <form
-                      onSubmit={handleCreateCategory}
-                      className="flex flex-col space-y-3"
+            <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50">
+              <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+                <h3 className="text-xl font-bold mb-2">
+                  Create a New Category
+                </h3>
+                <form
+                  onSubmit={handleCreateCategory}
+                  className="flex flex-col space-y-3"
+                >
+                  <input
+                    type="text"
+                    className="p-2 border border-gray-300 rounded-lg w-full"
+                    placeholder="Enter new category"
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                    required
+                  />
+                  <div className="flex justify-end space-x-2">
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
                     >
-                      <input
-                        type="text"
-                        className="p-2 border border-gray-300 rounded-lg w-full"
-                        placeholder="Enter new category"
-                        value={newCategory}
-                        onChange={(e) => setNewCategory(e.target.value)}
-                        required
-                      />
-                      <div className="flex justify-end space-x-2">
-                        <button
-                          type="submit"
-                          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                        >
-                          Add
-                        </button>
-                        <button
-                          type="button"
-                          className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
-                          onClick={() => setIsCreatingCategory(false)}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </form>
+                      Add
+                    </button>
+                    <button
+                      type="button"
+                      className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+                      onClick={() => setIsCreatingCategory(false)}
+                    >
+                      Cancel
+                    </button>
                   </div>
-                </div>
-              )}
-
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>

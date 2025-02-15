@@ -10,7 +10,7 @@ interface Category {
 const TransactionTable = ({ transactions, loading, error }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [categories, setCategories] =  useState<Category[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [newCategory, setNewCategory] = useState('');
   const [partyCategory, setPartyCategory] = useState<string | number>('');
@@ -20,7 +20,12 @@ const TransactionTable = ({ transactions, loading, error }) => {
   const filteredTransactions = transactions.filter((transaction) => {
     return (
       transaction.partyName.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      (selectedCategory ? transaction.category === selectedCategory : true)
+      (selectedCategory
+        ? transaction.category.toLowerCase() ===
+          categories
+            .find((cat) => cat.id === Number(selectedCategory))
+            ?.name.toLowerCase()
+        : true)
     );
   });
 
@@ -28,11 +33,23 @@ const TransactionTable = ({ transactions, loading, error }) => {
     fetchCategories();
   }, []);
 
-  
-
   const fetchCategories = async () => {
     try {
-      const response = await fetch('http://192.168.1.40:8000/sales/categories/'); // Replace with actual API
+      const token = localStorage.getItem('accessToken');
+      if (!token) throw new Error('Token not found');
+
+      console.log("Sending Token:", token);
+
+      const response = await fetch(
+        'http://192.168.1.40:8000/sales/categories/',
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        },
+      ); // Replace with actual API
       const data: Category[] = await response.json();
       console.log(data);
       if (data && Array.isArray(data.results)) {
@@ -53,33 +70,44 @@ const TransactionTable = ({ transactions, loading, error }) => {
     if (value === 'create') {
       setIsCreatingCategory(true);
       setPartyCategory('');
+      setSelectedCategory('');
     } else {
       setPartyCategory(Number(value));
+      setSelectedCategory(value);
     }
   };
 
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault(); // ✅ Prevent page refresh immediately
-  
+
     if (!newCategory.trim()) {
       alert('Please enter a valid category.');
       return;
     }
-  
+
     try {
-      const response = await fetch('http://192.168.1.40:8000/sales/categories/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newCategory.trim() }),
-      });
-  
+      const token = localStorage.getItem('accessToken');
+      if (!token) throw new Error('Token not found');
+      const response = await fetch(
+        'http://192.168.1.40:8000/sales/categories/',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ name: newCategory.trim() }),
+        },
+      );
+
       const data = await response.json();
       console.log('Response from API:', data); // Debugging
-  
+
       if (response.ok) {
         setNewCategory('');
         setIsCreatingCategory(false);
         await fetchCategories(); // ✅ Re-fetch categories from API to update dropdown
+        setSelectedCategory(data.name);
       } else {
         console.error('Error adding category:', data);
         alert('Error adding category');
@@ -114,11 +142,12 @@ const TransactionTable = ({ transactions, loading, error }) => {
             onChange={handleCategoryChange}
           >
             <option value="">Select Category</option>
-            {Array.isArray(categories) && categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
+            {Array.isArray(categories) &&
+              categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
             <option value="create">Create Category</option>
           </select>
         </div>
