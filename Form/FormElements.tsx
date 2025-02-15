@@ -51,42 +51,60 @@ const FormElements = () => {
   ]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [totalToCollect, setTotalToCollect] = useState(0);
+  const [totalToPay, setTotalToPay] = useState(0);
+  const [filter, setFilter] = useState('all');
 
   // Fetch transactions from API on component mount
   useEffect(() => {
     const fetchTransactions = async () => {
       try {
+        const token = localStorage.getItem('accessToken');
+        if (!token) throw new Error('Token not found');
         const response = await axios.get(
-          'http://192.168.1.40:8000/sales/parties/'
+          'http://192.168.1.40:8000/sales/parties/',
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          },
         );
-  
-        console.log('Full API Response:', response); // Debugging
-        console.log('Response Data:', response.data); // Debugging
-  
+
+        // console.log('Full API Response:', response); // Debugging
+        // console.log('Response Data:', response.data); // Debugging
+
         let transactionsArray = [];
-  
+
         // Check if response.data is an object with a `results` array
         if (Array.isArray(response.data.results)) {
           transactionsArray = response.data.results;
-        } 
+        }
         // If response.data is directly an array
         else if (Array.isArray(response.data)) {
           transactionsArray = response.data;
-        } 
-        else {
+        } else {
           setError('Unexpected response format');
           setLoading(false);
           return;
         }
-  
+
         const formattedData = transactionsArray.map(async (txn) => {
           // If txn.category is just an id, you can fetch category details here
           let categoryName = 'N/A';
           if (txn.category) {
             // Fetch the category name (you may need to adjust the API path)
             try {
+              const token = localStorage.getItem('accessToken');
+              if (!token) throw new Error('Token not found');
               const categoryResponse = await axios.get(
-                `http://192.168.1.40:8000/sales/categories/${txn.category}/`
+                `http://192.168.1.40:8000/sales/categories/${txn.category}/`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                  },
+                },
               );
               categoryName = categoryResponse.data.name || 'N/A';
             } catch (err) {
@@ -94,18 +112,20 @@ const FormElements = () => {
               categoryName = 'Error fetching category';
             }
           }
-  
+
           return {
             partyName: txn.party_name || 'N/A',
             category: categoryName, // Ensure category is the name
             MobileNumber: txn.mobile_number || 'N/A',
             partytype: txn.party_type || 'N/A',
             amount: txn.opening_balance || 0, // Fix incorrect key Amount
+            balanceType: txn.balance_type,
           };
         });
-  
+
         // Wait for all async category fetches to finish
         const resolvedData = await Promise.all(formattedData);
+
         setTransactions(resolvedData);
         setLoading(false);
       } catch (err) {
@@ -114,17 +134,80 @@ const FormElements = () => {
         setLoading(false);
       }
     };
-  
+
+    const fetchTotalAmounts = async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        if (!token) throw new Error('Token not found');
+        const collectResponse = await axios.get(
+          'http://192.168.1.40:8000/sales/parties/to-collect/',
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          },
+        );
+        setTotalToCollect(collectResponse.data.totalToCollect || 0);
+      } catch (err) {
+        console.error('Error fetching total to collect:', err);
+      }
+
+      try {
+        const token = localStorage.getItem('accessToken');
+        if (!token) throw new Error('Token not found');
+        const payResponse = await axios.get(
+          'http://192.168.1.40:8000/sales/parties/to-pay/',
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          },
+        );
+        setTotalToPay(payResponse.data.totalToPay || 0);
+      } catch (err) {
+        console.error('Error fetching total to pay:', err);
+      }
+    };
+
     fetchTransactions();
+    fetchTotalAmounts();
   }, []);
 
+  {
+    /*useEffect(() => {
+    const fetchTotalAmounts = async () => {
+      try {
+        const collectResponse = await axios.get('http://192.168.1.40:8000/sales/parties/to-collect/');
+        setTotalToCollect(collectResponse.data.totalToCollect || 0);
+      } catch (err) {
+        console.error('Error fetching total to collect:', err);
+      }
+
+      try {
+        const payResponse = await axios.get('http://192.168.1.40:8000/sales/parties/to-pay/');
+        setTotalToPay(payResponse.data.totalToPay || 0);
+      } catch (err) {
+        console.error('Error fetching total to pay:', err);
+      }
+    };
+
+    fetchTotalAmounts();
+  }, []);*/
+  }
+
+  const handleFilterChange = (type) => {
+    setFilter(type);
+  };
+
+  const filteredTransactions = transactions.filter((txn) => {
+    if (filter === 'toCollect') return txn.balanceType == "To Collect" ;
+    if (filter === 'toPay') return txn.balanceType == "To Pay";
+    return true;
+  });
+
   const allParties = transactions.length;
-  const totalToCollect = transactions
-    .filter((txn) => txn.amount > 0)
-    .reduce((sum, txn) => sum + txn.amount, 0);
-  const totalToPay = transactions
-    .filter((txn) => txn.amount < 0)
-    .reduce((sum, txn) => sum + Math.abs(txn.amount), 0);
 
   return (
     <>
@@ -133,10 +216,11 @@ const FormElements = () => {
         totalParties={allParties}
         totalToCollect={totalToCollect}
         totalToPay={totalToPay}
+        onFilterChange={handleFilterChange}
       />
       <CreateParty />
       <Transactiontable
-        transactions={transactions}
+        transactions={filteredTransactions}
         loading={loading}
         error={error}
       />
